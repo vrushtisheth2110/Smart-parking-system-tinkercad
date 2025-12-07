@@ -1,0 +1,92 @@
+// ===== Smart Parking System =====
+#include <LiquidCrystal.h>
+#include <Servo.h>
+
+Servo S1, S2;
+
+// IR sensor pins
+#define IR_SLOT1 7
+#define IR_SLOT2 8
+#define IR_entry 6
+#define IR_exit 13
+
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+
+// Servo initial position
+int pos = 0;
+
+// Slot status (0 = Available, 1 = Not Available)
+int slot1Status = 0;
+int slot2Status = 0;
+
+// Exit tracking
+int exitCount = 0;
+
+void setup() {
+  S1.attach(10); // Entry gate
+  S2.attach(9);  // Exit gate
+  S1.write(pos);
+  S2.write(pos);
+
+  pinMode(IR_SLOT1, INPUT);
+  pinMode(IR_SLOT2, INPUT);
+  pinMode(IR_entry, INPUT);
+  pinMode(IR_exit, INPUT);
+
+  lcd.begin(16, 2);
+  lcd.print("Smart Parking");
+  delay(2000);
+  lcd.clear();
+  updateLCD();
+}
+
+void loop() {
+  // ---- Car Entry ----
+  if (digitalRead(IR_entry) == HIGH) {
+    S1.write(pos + 90);
+    delay(2000);
+    S1.write(pos);
+  }
+
+  // ---- Slot 1 Occupancy ----
+  if (digitalRead(IR_SLOT1) == HIGH && slot1Status == 0) {
+    slot1Status = 1;
+    updateLCD();
+  }
+
+  // ---- Slot 2 Occupancy ----
+  if (digitalRead(IR_SLOT2) == HIGH && slot2Status == 0) {
+    slot2Status = 1;
+    updateLCD();
+  }
+
+  // ---- Car Exit ----
+  if (digitalRead(IR_exit) == HIGH) {
+    S2.write(pos + 90);
+    delay(2000);
+    S2.write(pos);
+
+    if (exitCount == 0 && slot1Status == 1) {
+      slot1Status = 0;  // Free Slot 1 only if it was occupied
+      exitCount = 1;
+      updateLCD();
+    }
+    else if (exitCount == 1 && slot2Status == 1) {
+      slot2Status = 0;  // Free Slot 2 only if it was occupied
+      exitCount = 2;
+      updateLCD();
+    }
+  }
+}
+
+// ===== Update LCD =====
+void updateLCD() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Slot 1 = ");
+  lcd.print(slot1Status == 0 ? "A" : "NA");
+
+  lcd.setCursor(0, 1);
+  lcd.print("Slot 2 = ");
+  lcd.print(slot2Status == 0 ? "A" : "NA");
+}
